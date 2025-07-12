@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
+import PerformanceMonitor from '@/components/common/PerformanceMonitor'
+import Analytics, { VercelAnalytics, WebVitalsReporter } from '@/components/common/Analytics'
 import './globals.css'
 
 const inter = Inter({ 
@@ -83,16 +86,23 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       </head>
       <body className={`${inter.variable} font-sans antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <div className="min-h-screen flex flex-col">
-            {children}
-          </div>
-        </ThemeProvider>
+        <PerformanceMonitor>
+          <ErrorBoundary>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <div className="min-h-screen flex flex-col">
+                {children}
+              </div>
+            </ThemeProvider>
+          </ErrorBoundary>
+        </PerformanceMonitor>
+        <Analytics />
+        <VercelAnalytics />
+        <WebVitalsReporter />
       </body>
     </html>
   )

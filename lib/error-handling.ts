@@ -33,7 +33,9 @@ export class AppError extends Error {
     this.name = 'AppError'
     this.type = type
     this.code = code
-    this.statusCode = statusCode
+    if (statusCode !== undefined) {
+      this.statusCode = statusCode
+    }
     this.details = details
 
     // 维护原型链
@@ -78,7 +80,7 @@ export async function withNetworkRetry<T>(
     ...config
   }
 
-  let lastError: Error
+  let lastError: Error = new Error('未知网络错误')
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -175,7 +177,7 @@ export class OfflineHandler {
       toast({
         title: '网络已连接',
         description: '网络连接已恢复，您可以继续浏览',
-        type: 'success'
+        variant: 'success'
       })
     })
 
@@ -185,7 +187,7 @@ export class OfflineHandler {
       toast({
         title: '网络连接断开',
         description: '请检查网络连接，部分功能可能无法使用',
-        type: 'warning',
+        variant: 'warning',
         duration: 0 // 持续显示直到网络恢复
       })
     })
@@ -222,9 +224,15 @@ export class UploadProgressHandler {
     onError?: (error: Error) => void
     onSuccess?: () => void
   }) {
-    this.onProgress = callbacks.onProgress
-    this.onError = callbacks.onError
-    this.onSuccess = callbacks.onSuccess
+    if (callbacks.onProgress !== undefined) {
+      this.onProgress = callbacks.onProgress
+    }
+    if (callbacks.onError !== undefined) {
+      this.onError = callbacks.onError
+    }
+    if (callbacks.onSuccess !== undefined) {
+      this.onSuccess = callbacks.onSuccess
+    }
   }
 
   async uploadFile(file: File, endpoint: string): Promise<void> {

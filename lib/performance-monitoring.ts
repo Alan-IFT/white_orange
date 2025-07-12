@@ -3,6 +3,7 @@
  * 提供完整的性能监控、指标收集和分析功能
  */
 
+
 // Core Web Vitals 阈值配置
 export const WEB_VITALS_THRESHOLDS = {
   // Largest Contentful Paint (LCP) - 最大内容绘制
@@ -198,8 +199,8 @@ export class WebVitalsMonitor {
 
   private sendToAnalytics(metric: PerformanceMetric) {
     // 可以集成 Google Analytics 4, Vercel Analytics 等
-    if (typeof gtag !== 'undefined') {
-      gtag('event', metric.name, {
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', metric.name, {
         metric_value: metric.value,
         metric_rating: metric.rating,
         custom_map: {
@@ -230,7 +231,7 @@ export class WebVitalsMonitor {
 // 内存监控类
 export class MemoryMonitor {
   private isMonitoring = false
-  private intervalId?: NodeJS.Timeout
+  private intervalId?: NodeJS.Timeout | undefined
 
   startMonitoring() {
     if (this.isMonitoring || !this.isMemoryAPISupported()) return
@@ -299,11 +300,11 @@ export class SlowQueryMonitor {
   private queryLogs: any[] = []
   private startTimes = new Map<string, number>()
 
-  startQuery(queryId: string, query: string, params?: any) {
+  startQuery(queryId: string, _query: string, _params?: any) {
     this.startTimes.set(queryId, performance.now())
   }
 
-  endQuery(queryId: string, result?: any) {
+  endQuery(queryId: string, _result?: any) {
     const startTime = this.startTimes.get(queryId)
     if (!startTime) return
 
@@ -419,7 +420,7 @@ export class PerformanceReporter {
       analysis[metricName].stats = {
         min: Math.min(...values),
         max: Math.max(...values),
-        avg: values.reduce((a, b) => a + b, 0) / values.length,
+        avg: values.reduce((a: number, b: number) => a + b, 0) / values.length,
         median: this.calculateMedian(values)
       }
     })
@@ -430,9 +431,14 @@ export class PerformanceReporter {
   private static calculateMedian(values: number[]): number {
     const sorted = [...values].sort((a, b) => a - b)
     const mid = Math.floor(sorted.length / 2)
-    return sorted.length % 2 === 0 
-      ? (sorted[mid - 1] + sorted[mid]) / 2 
-      : sorted[mid]
+    if (sorted.length % 2 === 0) {
+      const left = sorted[mid - 1]
+      const right = sorted[mid]
+      return left !== undefined && right !== undefined ? (left + right) / 2 : 0
+    } else {
+      const value = sorted[mid]
+      return value !== undefined ? value : 0
+    }
   }
 
   private static generateRecommendations(metrics: PerformanceMetric[]): string[] {

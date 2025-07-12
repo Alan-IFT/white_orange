@@ -28,6 +28,14 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       title: '文章未找到',
     }
   }
+
+  // 生成动态 OG 图片 URL
+  const ogImageUrl = new URL('/api/og', process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
+  ogImageUrl.searchParams.set('title', post.title)
+  ogImageUrl.searchParams.set('description', post.description)
+  if (post.categories.length > 0 && post.categories[0]) {
+    ogImageUrl.searchParams.set('category', post.categories[0])
+  }
   
   return {
     title: post.title,
@@ -39,13 +47,20 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       type: 'article',
       publishedTime: post.date,
       authors: [post.author],
-      images: post.cover ? [post.cover] : undefined,
+      images: [
+        {
+          url: post.cover || ogImageUrl.toString(),
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.description,
-      images: post.cover ? [post.cover] : undefined,
+      images: [post.cover || ogImageUrl.toString()],
     },
   }
 }
