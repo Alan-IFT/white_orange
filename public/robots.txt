@@ -1,0 +1,20 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+
+# Googlebot
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+
+# Host
+Host: https://whiteorange.dev
+
+# Sitemaps
+Sitemap: https://whiteorange.dev/sitemap.xml
+Sitemap: https://whiteorange.dev/rss.xml

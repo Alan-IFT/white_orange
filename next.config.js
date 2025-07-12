@@ -21,6 +21,9 @@ const nextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
+  // 服务器外部包配置 (从experimental移出)
+  serverExternalPackages: ['sharp'],
+  
   // 启用实验性功能 (Next.js 15.3.5+ 兼容)
   experimental: {
     // React 19 兼容性
@@ -28,15 +31,6 @@ const nextConfig = {
     
     // 性能优化
     optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns'],
-    
-    // 服务器组件优化
-    serverComponentsExternalPackages: ['sharp'],
-    
-    // 增量静态再生
-    isrMemoryCacheSize: 0,
-    
-    // 并发渲染
-    concurrentFeatures: true
   },
   
   // 编译器选项 (React 19.1.0+ 优化)
@@ -50,10 +44,7 @@ const nextConfig = {
     reactRemoveProperties: process.env.NODE_ENV === 'production',
     
     // 样式化组件支持
-    styledComponents: false,
-    
-    // 删除测试文件
-    removeDataTestIds: process.env.NODE_ENV === 'production'
+    styledComponents: false
   },
   
   // 静态文件处理
@@ -85,16 +76,7 @@ const nextConfig = {
   
   // 重写
   async rewrites() {
-    return [
-      {
-        source: '/sitemap.xml',
-        destination: '/api/sitemap',
-      },
-      {
-        source: '/robots.txt',
-        destination: '/api/robots',
-      },
-    ];
+    return [];
   },
   
   // 头部设置
@@ -211,8 +193,7 @@ const nextConfig = {
   
   // 开发体验优化
   devIndicators: {
-    buildActivity: true,
-    buildActivityPosition: 'bottom-right',
+    position: 'bottom-right',
   },
   
   // 日志配置

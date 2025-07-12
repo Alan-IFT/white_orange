@@ -117,7 +117,9 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
       wordCount: stats.words,
     }
   } catch (error) {
-    console.error(`Error reading post ${slug}:`, error)
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`Error reading post ${slug}:`, error)
+    }
     return null
   }
 }
@@ -132,7 +134,7 @@ export async function getAllPosts(): Promise<BlogMetadata[]> {
   for (const slug of slugs) {
     const post = await getPostBySlug(slug)
     if (post && !post.draft) {
-      const { content, ...metadata } = post
+      const { content: _, ...metadata } = post
       posts.push(metadata)
     }
   }
