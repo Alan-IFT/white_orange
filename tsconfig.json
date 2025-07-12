@@ -1,0 +1,141 @@
+{
+  "compilerOptions": {
+    // === 基础配置 ===
+    "target": "ES2022",
+    "lib": [
+      "DOM",
+      "DOM.Iterable", 
+      "ES6",
+      "ES2022"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    
+    // === 路径映射 ===
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/app/*": ["./app/*"],
+      "@/content/*": ["./content/*"],
+      "@/public/*": ["./public/*"],
+      "@/styles/*": ["./styles/*"],
+      "@/types/*": ["./types/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/utils/*": ["./utils/*"],
+      "@/config/*": ["./config/*"]
+    },
+    
+    // === 插件配置 ===
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    
+    // === 严格类型检查 ===
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": false,
+    
+    // === 额外检查 ===
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": false,
+    
+    // === 互操作性 ===
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    // === 编译输出 ===
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "removeComments": true,
+    "importHelpers": true,
+    
+    // === 实验性功能 ===
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    
+    // === 类型定义 ===
+    "types": [
+      "node",
+      "jest",
+      "@testing-library/jest-dom",
+      "@types/react",
+      "@types/react-dom"
+    ],
+    
+    // === 模块解析 ===
+    "moduleDetection": "auto",
+    "allowImportingTsExtensions": false,
+    "allowArbitraryExtensions": false,
+    
+    // === 编译器诊断 ===
+    "extendedDiagnostics": false,
+    "explainFiles": false,
+    "traceResolution": false,
+    
+    // === 性能优化 ===
+    "assumeChangesOnlyAffectDirectDependencies": true
+  },
+  
+  // === 包含的文件 ===
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.mjs",
+    ".next/types/**/*.ts",
+    "./types/**/*.ts"
+  ],
+  
+  // === 排除的文件 ===
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build",
+    "coverage",
+    "test-results",
+    "playwright-report",
+    "**/*.config.js",
+    "**/*.config.ts",
+    "scripts/**/*",
+    "public/**/*",
+    "content/**/*.md",
+    "content/**/*.mdx",
+    "e2e/**/*",
+    "__tests__/**/*",
+    "lib/error-handling.ts",
+    "lib/performance-monitoring.ts",
+    "lib/security-config.ts"
+  ],
+  
+  // === TypeScript 项目引用 ===
+  "references": []
+}

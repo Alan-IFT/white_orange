@@ -1,0 +1,397 @@
+# CI/CD Pipeline - Next.js 15.3.5+ & React 19.1.0+ 博客系统
+# 自动化测试、构建、部署流程
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22.17.0'
+  NPM_VERSION: '10.9.2'
+
+jobs:
+  # 代码质量检查
+  lint-and-format:
+    runs-on: ubuntu-latest
+    name: 代码质量检查
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm ls # 验证依赖完整性
+        
+    - name: Run ESLint
+      run: npm run lint
+      
+    - name: Check Prettier formatting
+      run: npm run format:check
+      
+    - name: TypeScript type checking
+      run: npm run type-check
+      
+    - name: Check for security vulnerabilities
+      run: npm audit --audit-level moderate
+      
+    - name: Upload lint results
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: lint-results
+        path: |
+          eslint-report.json
+          .eslintcache
+
+  # 单元测试
+  unit-tests:
+    runs-on: ubuntu-latest
+    name: 单元测试
+    
+    strategy:
+      matrix:
+        node-version: ['22.17.0']
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run unit tests
+      run: npm run test -- --coverage --watchAll=false
+      env:
+        CI: true
+        
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: unit-test-results-${{ matrix.node-version }}
+        path: |
+          coverage/
+          test-results/
+          junit.xml
+
+  # E2E 测试
+  e2e-tests:
+    runs-on: ubuntu-latest
+    name: E2E 测试
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+      
+    - name: Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+        
+    - name: Run E2E tests
+      run: npx playwright test --project=${{ matrix.browser }}
+      env:
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+        
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: e2e-results-${{ matrix.browser }}
+        path: |
+          test-results/
+          playwright-report/
+          
+    - name: Upload screenshots
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: screenshots-${{ matrix.browser }}
+        path: test-results/**/*.png
+
+  # 构建测试
+  build-test:
+    runs-on: ubuntu-latest
+    name: 构建测试
+    
+    strategy:
+      matrix:
+        build-mode: [static, server]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build application (静态模式)
+      if: matrix.build-mode == 'static'
+      run: npm run build:static
+      env:
+        NEXT_OUTPUT_MODE: export
+        NODE_ENV: production
+        
+    - name: Build application (服务器模式)
+      if: matrix.build-mode == 'server'
+      run: npm run build:server
+      env:
+        NEXT_OUTPUT_MODE: standalone
+        NODE_ENV: production
+        
+    - name: Test build output
+      run: |
+        if [ "${{ matrix.build-mode }}" = "static" ]; then
+          test -d out
+          test -f out/index.html
+        else
+          test -d .next/standalone
+          test -f .next/standalone/server.js
+        fi
+        
+    - name: Bundle analysis
+      if: matrix.build-mode == 'server'
+      run: npm run analyze
+      env:
+        ANALYZE: true
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-${{ matrix.build-mode }}
+        path: |
+          .next/
+          out/
+          .next/analyze/
+
+  # Docker 构建测试
+  docker-build:
+    runs-on: ubuntu-latest
+    name: Docker 构建测试
+    needs: [lint-and-format, unit-tests]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        tags: white-orange-blog:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Test Docker image
+      run: |
+        docker run --rm -d -p 3000:3000 --name blog-test white-orange-blog:test
+        sleep 30
+        curl -f http://localhost:3000 || exit 1
+        docker stop blog-test
+
+  # 安全扫描
+  security-scan:
+    runs-on: ubuntu-latest
+    name: 安全扫描
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        
+    - name: Dependency vulnerability check
+      run: npm audit --audit-level high
+
+  # 性能测试
+  performance-test:
+    runs-on: ubuntu-latest
+    name: 性能测试
+    needs: [build-test]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-server
+        
+    - name: Install Lighthouse
+      run: npm install -g lighthouse
+      
+    - name: Start application
+      run: npm start &
+      env:
+        NODE_ENV: production
+        
+    - name: Wait for application
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+        
+    - name: Run Lighthouse audit
+      run: |
+        lighthouse http://localhost:3000 \
+          --output json \
+          --output-path lighthouse-report.json \
+          --chrome-flags="--headless --no-sandbox" \
+          --only-categories=performance,accessibility,best-practices,seo
+          
+    - name: Upload Lighthouse report
+      uses: actions/upload-artifact@v4
+      with:
+        name: lighthouse-report
+        path: lighthouse-report.json
+
+  # 部署到测试环境
+  deploy-staging:
+    runs-on: ubuntu-latest
+    name: 部署到测试环境
+    needs: [unit-tests, e2e-tests, build-test, security-scan]
+    if: github.ref == 'refs/heads/develop'
+    
+    environment:
+      name: staging
+      url: https://staging.example.com
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-static
+        
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        # 这里添加实际的部署脚本
+        # 例如：rsync, AWS S3, Vercel, Netlify 等
+        
+    - name: Run smoke tests
+      run: |
+        curl -f https://staging.example.com || exit 1
+        curl -f https://staging.example.com/api/health || exit 1
+
+  # 部署到生产环境
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: 部署到生产环境
+    needs: [unit-tests, e2e-tests, build-test, security-scan, performance-test]
+    if: github.ref == 'refs/heads/main'
+    
+    environment:
+      name: production
+      url: https://example.com
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-static
+        
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment..."
+        # 这里添加实际的部署脚本
+        
+    - name: Run production smoke tests
+      run: |
+        curl -f https://example.com || exit 1
+        curl -f https://example.com/sitemap.xml || exit 1
+        
+    - name: Notify deployment
+      run: |
+        echo "Production deployment completed successfully!"
+        # 可以添加 Slack/Discord 通知
+
+  # 清理
+  cleanup:
+    runs-on: ubuntu-latest
+    name: 清理
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: Clean up artifacts
+      run: |
+        echo "Cleaning up temporary files and caches..."
+        # 清理逻辑
